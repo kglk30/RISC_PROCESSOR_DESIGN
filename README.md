@@ -433,7 +433,7 @@ python3 cli.py debug programs/02_factorial.asm --arch 4stage
 
 ## Empirical Benchmarks & Experimental Results
 
-The following results were recorded by running `python3 benchmarks/benchmark.py`. They predate the documented Python Dadda and SRT defaults and should be rerun before comparing current performance:
+The following results were recorded by running `python3 benchmarks/benchmark.py`. Rerun them with the current configuration before comparing performance:
 
 ### 1. 4-Stage vs. 6-Stage Pipeline Comparison
 | Benchmark Program | Architecture | Cycles | Instructions | Stalls | CPI | IPC |
