@@ -106,6 +106,8 @@ Trap Format:
 | `10101` (21) | `blt`  | `blt label`            | Branch if Less ($N \neq V$) |
 | `10110` (22) | `bne`  | `bne label`            | Branch if Not Equal ($Z = 0$) |
 | `10111` (23) | `trap` | `trap id`              | Software interrupt / security exception |
+| `11000` (24) | `clz` | `clz rd, rs1` | Count leading zeros in a 32-bit value (Python implementation) |
+| `11001` (25) | `popcnt` | `popcnt rd, rs1` | Count set bits in a 32-bit value (Python implementation) |
 | `11111` (31) | `hlt`  | `hlt`                  | Halt processor execution |
 
 ---
@@ -114,14 +116,14 @@ Trap Format:
 
 ### 1. Hardwired Zero Register (`r0`)
 * **Specification**: Register index 0 is hardwired to integer 0.
-* **Implementation** (`risc201/registers.py`):
+* **Implementation** (`risc201/core/registers.py`):
   * `read(0)` always returns `0`.
   * `write(0, value)` silently discards the write operation.
 * **Benefit**: Eliminates redundant zero-initialization instructions, allows standard negation (`sub rd, r0, rs2`), and guarantees compatibility with modern RISC conventions (RISC-V, MIPS).
 
 ### 2. Hardware Performance Monitoring Counters (PMCs)
 * **Specification**: Special-purpose hardware telemetry tracking cycle-by-cycle metrics.
-* **Implementation** (`risc201/pmc.py`):
+* **Implementation** (`risc201/core/pmc.py`):
   * `cycle_count`, `instruction_count`, `stall_count`
   * `load_use_stalls`, `structural_stalls`, `forwarding_events`
   * `branch_count`, `branch_mispredict_count`
@@ -129,7 +131,7 @@ Trap Format:
 
 ### 3. Active ASCII Stack Memory Visualizer
 * **Specification**: Real-time terminal visualization of the runtime stack frame during stepping or debugging pauses.
-* **Implementation** (`risc201/visualizer.py`):
+* **Implementation** (`risc201/ui/visualizer.py`):
   * Dynamically slices memory between Stack Pointer (`sp`) and Frame Pointer (`fp`).
   * Annotates stack addresses, raw hex, signed decimal, saved frame pointer, return address, and stack canaries.
 
@@ -157,7 +159,7 @@ Trap Format:
 
 ### 5. Stack Canaries & Boundary Protection
 * **Specification**: Security mechanism detecting buffer overflows.
-* **Implementation** (`risc201/stack.py`):
+* **Implementation** (`risc201/core/stack.py`):
   * Stack Preprocessor expands `enter` and `leave` macros.
   * During function prologue (`enter`), a constant canary (`0x0001C0DE`) is stored right below the saved frame pointer.
   * During function epilogue (`leave`), the canary is read and checked against the expected magic constant.
@@ -166,7 +168,7 @@ Trap Format:
 
 ### 6. Dynamic 2-bit Saturating Counter Branch Predictor & BTB
 * **Specification**: Dynamic prediction minimizing branch penalty cycles.
-* **Implementation** (`risc201/branch_predictor.py`):
+* **Implementation** (`risc201/pipelines/branch_predictor.py`):
   * 4 states:
     * `00`: Strongly Not-Taken (SNT)
     * `01`: Weakly Not-Taken (WNT)
@@ -260,15 +262,19 @@ The simulator includes an explicit Control Memory (ROM) and Micro-Program Counte
 
 ## Optimized ALU Subsystem
 
-The `ALU` class (`risc201/alu.py`) provides hardware-accurate algorithmic models:
-* **Multiplication**:
+The Python `ALU` class (`risc201/alu/alu.py`) provides configurable algorithmic models:
+* **Multiplication** (using the existing `mul` opcode `00010`):
+  * **Dadda Tree Multiplier**: The Python default; models partial-product reduction with a simulated latency of 6 cycles.
   * **Fast Multiplier**: Native 1-cycle 32-bit two's complement product.
   * **Booth's Radix-2 Multiplier**: 32-cycle step-by-step arithmetic recoding ($Q_0, Q_{-1}$ comparison, addition/subtraction, arithmetic right shift).
   * **Shift-and-Add Multiplier**: 32-cycle unsigned shift-and-accumulate logic.
-* **Division**:
+* **Division** (using `div` opcode `00011` for the quotient and `mod` opcode `00100` for the remainder):
+  * **SRT Radix-2 Divider**: The Python default; uses a non-restoring-style radix-2 algorithm with a simulated latency of 32 cycles. SRT is an ALU algorithm, not a separate instruction or opcode.
   * **Fast Divider**: Native 1-cycle truncating division.
   * **Restoring Divider**: 32-cycle register shifting, trial subtraction, and restore steps.
   * **Zero Division Protection**: Generates `DivisionByZeroException`, captured in CSRs.
+* **Bit operations**: `clz rd, rs1` counts leading zeros (32 for zero); `popcnt rd, rs1` counts set bits using a parallel Hamming-weight algorithm. These instructions are implemented in the Python ISA, assembler, and ALU.
+* **Pipeline timing**: The Python 4-stage and 6-stage pipelines use the ALU latency to model stalls for multi-cycle `mul`, `div`, and `mod` operations.
 * **Condition Codes**: Sets `Z` (Zero), `N` (Negative), `C` (Carry/Borrow), `V` (Signed Overflow).
 
 ---
@@ -276,27 +282,27 @@ The `ALU` class (`risc201/alu.py`) provides hardware-accurate algorithmic models
 ## Software Suite & Toolchain
 
 The framework provides a modular set of tools:
-* `risc201/isa.py`: Instruction encodings, bit manipulation, register aliases.
-* `risc201/alu.py`: Optimized ALU with configurable multiplier and divider algorithms.
-* `risc201/registers.py`: General Purpose Registers with hardwired `r0`, and CSR registers (`EPC`, `CAUSE`, `STATUS`, `BADVADDR`).
-* `risc201/memory.py`: Byte-addressable 64 KB memory with alignment and boundary protection.
-* `risc201/stack.py`: Stack preprocessor expanding `push`, `pop`, `enter`, `leave`, and leaf function optimization (`enter_leaf`, `leave_leaf`) with canary verification.
-* `risc201/visualizer.py`: ASCII Stack Memory Visualizer & Pipeline State renderer.
-* `risc201/pmc.py`: Hardware Performance Monitoring Counters.
-* `risc201/branch_predictor.py`: 2-bit Saturating Counter Predictor + BTB.
-* `risc201/forwarding.py`: Forwarding Unit and Load-Use Hazard Detection Unit.
-* `risc201/pipeline_4stage.py`: Cycle-accurate 4-stage pipeline processor.
-* `risc201/pipeline_6stage.py`: Cycle-accurate 6-stage pipeline processor.
-* `risc201/microcode.py`: Microprogrammed CPU with Horizontal and Vertical control stores.
-* `risc201/assembler.py`: Two-pass assembler emitting binary words and hex listings.
-* `risc201/disassembler.py`: Machine code disassembler.
-* `risc201/debugger.py`: Interactive CLI debugger REPL.
+* `risc201/core/isa.py`: Instruction encodings, bit manipulation, register aliases.
+* `risc201/alu/alu.py`: Optimized ALU with configurable multiplier and divider algorithms.
+* `risc201/core/registers.py`: General Purpose Registers with hardwired `r0`, and CSR registers (`EPC`, `CAUSE`, `STATUS`, `BADVADDR`).
+* `risc201/core/memory.py`: Byte-addressable 64 KB memory with alignment and boundary protection.
+* `risc201/core/stack.py`: Stack preprocessor expanding `push`, `pop`, `enter`, `leave`, and leaf function optimization (`enter_leaf`, `leave_leaf`) with canary verification.
+* `risc201/ui/visualizer.py`: ASCII Stack Memory Visualizer & Pipeline State renderer.
+* `risc201/core/pmc.py`: Hardware Performance Monitoring Counters.
+* `risc201/pipelines/branch_predictor.py`: 2-bit Saturating Counter Predictor + BTB.
+* `risc201/pipelines/forwarding.py`: Forwarding Unit and Load-Use Hazard Detection Unit.
+* `risc201/pipelines/pipeline_4stage.py`: Cycle-accurate 4-stage pipeline processor.
+* `risc201/pipelines/pipeline_6stage.py`: Cycle-accurate 6-stage pipeline processor.
+* `risc201/control/microcode.py`: Microprogrammed CPU with Horizontal and Vertical control stores.
+* `risc201/toolchain/assembler.py`: Two-pass assembler emitting binary words and hex listings.
+* `risc201/toolchain/disassembler.py`: Machine code disassembler.
+* `risc201/ui/debugger.py`: Interactive CLI debugger REPL.
 * `cli.py`: Unified Python command line runner.
 * `benchmarks/benchmark.py`: Complete comparative benchmark suite in Python.
 * `tests/test_all.py`: Unit test runner in Python.
 
 ### C++17 Modular Implementation (`cpp/`)
-The entire processor simulation framework is also implemented in modern **C++17** with strict separation of header files (`cpp/include/`) and source files (`cpp/src/`):
+A parallel processor simulation framework is also implemented in modern **C++17** with strict separation of header files (`cpp/include/`) and source files (`cpp/src/`). The C++ implementation currently does not include the Python Dadda or SRT algorithms, or the `clz` and `popcnt` opcodes:
 
 ```
 cpp/
@@ -427,7 +433,7 @@ python3 cli.py debug programs/02_factorial.asm --arch 4stage
 
 ## Empirical Benchmarks & Experimental Results
 
-The following empirical results were measured by running `python3 benchmarks/benchmark.py`:
+The following results were recorded by running `python3 benchmarks/benchmark.py`. They predate the documented Python Dadda and SRT defaults and should be rerun before comparing current performance:
 
 ### 1. 4-Stage vs. 6-Stage Pipeline Comparison
 | Benchmark Program | Architecture | Cycles | Instructions | Stalls | CPI | IPC |
