@@ -88,7 +88,7 @@ Trap Format:
 | `00011` (3)  | `div`  | `div rd, rs1, rs2/imm` | Integer Division: $rd = rs1 / (rs2 \text{ or } imm)$ |
 | `00100` (4)  | `mod`  | `mod rd, rs1, rs2/imm` | Modulo Remainder: $rd = rs1 \pmod{rs2 \text{ or } imm}$ |
 | `00101` (5)  | `cmp`  | `cmp rs1, rs2/imm`     | Compare operands, update flags (Z, N, C, V) |
-| `00110` (6)  | `and`  | `and rd, rs1, rs2/imm` | Bitwise AND: $rd = rs1 \ \& \ (rs2 \text{ or } imm)$ |
+| `00110` (6) | `and` | `and rd, rs1, rs2/imm` | Bitwise AND: `rd = rs1 & (rs2 or imm)` |
 | `00111` (7)  | `or`   | `or rd, rs1, rs2/imm`  | Bitwise OR: $rd = rs1 \ \| \ (rs2 \text{ or } imm)$ |
 | `01000` (8)  | `not`  | `not rd, rs1`          | Bitwise NOT: $rd = \sim rs1$ |
 | `01001` (9)  | `mov`  | `mov rd, rs1/imm`      | Move register or immediate value into $rd$ |
