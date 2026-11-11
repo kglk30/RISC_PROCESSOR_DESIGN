@@ -188,7 +188,7 @@ Trap Format:
 ### 8. Leaf Function Optimization
 * **Topic**: Leaf function optimization
 * **Specification**: Avoids saving the return address and frame pointer when safe.
-* **Implementation** (`risc201/core/stack.py` and `cpp/src/core/stack.cpp`):
+* **Implementation** (`risc201/core/stack.py`):
   * **Leaf Subroutine Detection**: Identifies subroutines that make no nested subroutine calls (`call` instruction) and do not clobber the return address register (`ra` / `r15`).
   * **Omission of Saved Return Address**: Since a leaf function never executes a downstream `call`, hardware preserves the return address in `ra` intact throughout subroutine execution. Storing `ra` to stack RAM in the prologue (`st ra, 0[sp]`) and loading `ra` in the epilogue (`ld ra, 0[sp]`) is completely eliminated.
   * **Omission of Saved Frame Pointer**: Subroutines that do not require dynamic stack frame management safely bypass saving the caller's frame pointer (`st fp, 0[sp]`) and adjusting `fp`. The caller's `fp` remains unaffected.
@@ -301,79 +301,18 @@ The framework provides a modular set of tools:
 * `benchmarks/benchmark.py`: Complete comparative benchmark suite in Python.
 * `tests/test_all.py`: Unit test runner in Python.
 
-### C++17 Modular Implementation (`cpp/`)
-A parallel processor simulation framework is also implemented in modern **C++17** with strict separation of header files (`cpp/include/`) and source files (`cpp/src/`). The C++ implementation currently does not include the Python Dadda or SRT algorithms, or the `clz` and `popcnt` opcodes:
+## Running the Python Project
 
-```
-cpp/
-├── include/
-│   ├── alu/           # alu.hpp
-│   ├── control/       # microcode.hpp
-│   ├── core/          # isa.hpp, registers.hpp, memory.hpp, stack.hpp, pmc.hpp
-│   ├── pipelines/     # pipeline_4stage.hpp, pipeline_6stage.hpp, forwarding.hpp, branch_predictor.hpp
-│   ├── toolchain/     # assembler.hpp, disassembler.hpp
-│   └── ui/            # visualizer.hpp, debugger.hpp
-├── src/
-│   ├── alu/           # alu.cpp
-│   ├── control/       # microcode.cpp
-│   ├── core/          # isa.cpp, registers.cpp, memory.cpp, stack.cpp, pmc.cpp
-│   ├── pipelines/     # pipeline_4stage.cpp, pipeline_6stage.cpp, forwarding.cpp, branch_predictor.cpp
-│   ├── toolchain/     # assembler.cpp, disassembler.cpp
-│   ├── ui/            # visualizer.cpp, debugger.cpp
-│   ├── main.cpp       # Unified CLI driver
-│   ├── test_all.cpp   # Comprehensive unit test runner
-│   └── benchmark.cpp  # Architectural benchmark runner
-└── Makefile           # High-performance parallel build rules
+No compilation is required. From the repository root:
+
+```powershell
+py cli.py run programs/02_factorial.asm --arch 4stage
+py cli.py run programs/02_factorial.asm --arch 6stage
+py -m unittest discover -s tests
+py benchmarks/benchmark.py
 ```
 
----
-
-## Compilation & Execution Guide
-
-### 1. Build the C++ Project
-Compile all targets using the top-level `Makefile` or inside `cpp/`:
-```bash
-make            # Compiles cpp/bin/risc201, cpp/bin/test_all, cpp/bin/benchmark
-```
-
-### 2. Run C++ and Python Test Suites
-```bash
-make test       # Executes both C++ and Python test runners
-```
-Or run the C++ unit test binary directly:
-```bash
-./cpp/bin/test_all
-```
-
-### 3. Run Architectural Benchmarks
-```bash
-make benchmark  # Runs C++ comparative benchmarks
-# Or via CLI binary:
-./cpp/bin/risc201 benchmark
-```
-
-### 4. CLI Execution (C++ Binary)
-```bash
-# Assemble assembly source
-./cpp/bin/risc201 assemble programs/01_basic_test.asm -o out.hex
-
-# Disassemble 32-bit machine word
-./cpp/bin/risc201 disassemble 0x4C40002A
-
-# Run program on 4-stage pipeline
-./cpp/bin/risc201 run programs/02_factorial.asm --arch 4stage
-
-# Run program on 6-stage pipeline
-./cpp/bin/risc201 run programs/01_basic_test.asm --arch 6stage
-
-# Run program with dynamic 2-bit branch prediction
-./cpp/bin/risc201 run programs/06_branch_bench.asm --arch 6stage --branch dynamic_2bit
-
-# Launch interactive CLI debugger
-./cpp/bin/risc201 debug programs/02_factorial.asm --arch 4stage
-```
-
-### 5. CLI Execution (Python)
+On systems where Python is invoked as `python3`, replace `py` with `python3`. The `Makefile` provides `make test` and `make benchmark` for environments with Make installed.
 
 ---
 
