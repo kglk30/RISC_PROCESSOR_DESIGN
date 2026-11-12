@@ -82,29 +82,29 @@ Trap Format:
 ### 2. Opcode Table
 | Opcode (Binary) | Name | Syntax | Description |
 |---|---|---|---|
-| `00000` (0)  | `add`  | `add rd, rs1, rs2/imm` | Addition: $rd = rs1 + (rs2 \text{ or } imm)$ |
-| `00001` (1)  | `sub`  | `sub rd, rs1, rs2/imm` | Subtraction: $rd = rs1 - (rs2 \text{ or } imm)$ |
-| `00010` (2)  | `mul`  | `mul rd, rs1, rs2/imm` | Multiplication: $rd = rs1 \times (rs2 \text{ or } imm)$ |
-| `00011` (3)  | `div`  | `div rd, rs1, rs2/imm` | Integer Division: $rd = rs1 / (rs2 \text{ or } imm)$ |
-| `00100` (4)  | `mod`  | `mod rd, rs1, rs2/imm` | Modulo Remainder: $rd = rs1 \pmod{rs2 \text{ or } imm}$ |
+| `00000` (0)  | `add`  | `add rd, rs1, rs2/imm` | Addition: `rd = rs1 + operand` |
+| `00001` (1)  | `sub`  | `sub rd, rs1, rs2/imm` | Subtraction: `rd = rs1 - operand` |
+| `00010` (2)  | `mul`  | `mul rd, rs1, rs2/imm` | Multiplication: `rd = rs1 * operand` |
+| `00011` (3)  | `div`  | `div rd, rs1, rs2/imm` | Integer division: `rd = rs1 / operand` |
+| `00100` (4)  | `mod`  | `mod rd, rs1, rs2/imm` | Remainder: `rd = rs1 % operand` |
 | `00101` (5)  | `cmp`  | `cmp rs1, rs2/imm`     | Compare operands, update flags (Z, N, C, V) |
-| `00110` (6)  | `and`  | `and rd, rs1, rs2/imm` | Bitwise AND: $rd = rs1 \ \& \ (rs2 \text{ or } imm)$ |
-| `00111` (7)  | `or`   | `or rd, rs1, rs2/imm`  | Bitwise OR: $rd = rs1 \ \| \ (rs2 \text{ or } imm)$ |
-| `01000` (8)  | `not`  | `not rd, rs1`          | Bitwise NOT: $rd = \sim rs1$ |
-| `01001` (9)  | `mov`  | `mov rd, rs1/imm`      | Move register or immediate value into $rd$ |
-| `01010` (10) | `lsl`  | `lsl rd, rs1, rs2/imm` | Logical Shift Left: $rd = rs1 \ll (rs2 \text{ or } imm)$ |
-| `01011` (11) | `lsr`  | `lsr rd, rs1, rs2/imm` | Logical Shift Right: $rd = rs1 \gg (rs2 \text{ or } imm)$ |
+| `00110` (6)  | `and`  | `and rd, rs1, rs2/imm` | Bitwise AND: `rd = rs1 & operand` |
+| `00111` (7)  | `or`   | `or rd, rs1, rs2/imm`  | Bitwise OR: `rd = rs1 OR operand` |
+| `01000` (8)  | `not`  | `not rd, rs1`          | Bitwise NOT: `rd = NOT rs1` |
+| `01001` (9)  | `mov`  | `mov rd, rs1/imm`      | Move register or immediate value into `rd` |
+| `01010` (10) | `lsl`  | `lsl rd, rs1, rs2/imm` | Logical shift left: `rd = rs1 << operand` |
+| `01011` (11) | `lsr`  | `lsr rd, rs1, rs2/imm` | Logical shift right: `rd = rs1 >> operand` |
 | `01100` (12) | `asr`  | `asr rd, rs1, rs2/imm` | Arithmetic Shift Right (sign-preserving) |
 | `01101` (13) | `nop`  | `nop`                  | No operation |
-| `01110` (14) | `ld`   | `ld rd, imm[rs1]`      | Load 32-bit word from memory at $rs1 + imm$ |
-| `01111` (15) | `st`   | `st rd, imm[rs1]`      | Store 32-bit word from $rd$ into memory at $rs1 + imm$ |
-| `10000` (16) | `beq`  | `beq label`            | Branch if Equal ($Z = 1$) |
-| `10001` (17) | `bgt`  | `bgt label`            | Branch if Greater ($Z = 0 \text{ and } N == V$) |
+| `01110` (14) | `ld`   | `ld rd, imm[rs1]`      | Load a 32-bit word from address `rs1 + imm` |
+| `01111` (15) | `st`   | `st rd, imm[rs1]`      | Store a 32-bit word from `rd` at address `rs1 + imm` |
+| `10000` (16) | `beq`  | `beq label`            | Branch if equal (`Z = 1`) |
+| `10001` (17) | `bgt`  | `bgt label`            | Branch if greater (`Z = 0` and `N = V`) |
 | `10010` (18) | `b`    | `b label`              | Unconditional Branch |
-| `10011` (19) | `call` | `call label`           | Subroutine Call: saves $PC + 4$ in $ra$ (r15), jumps |
-| `10100` (20) | `ret`  | `ret`                  | Subroutine Return: jumps to address in $ra$ (r15) |
-| `10101` (21) | `blt`  | `blt label`            | Branch if Less ($N \neq V$) |
-| `10110` (22) | `bne`  | `bne label`            | Branch if Not Equal ($Z = 0$) |
+| `10011` (19) | `call` | `call label`           | Save `PC + 4` in `ra` (r15), then jump |
+| `10100` (20) | `ret`  | `ret`                  | Return to the address in `ra` (r15) |
+| `10101` (21) | `blt`  | `blt label`            | Branch if less (`N != V`) |
+| `10110` (22) | `bne`  | `bne label`            | Branch if not equal (`Z = 0`) |
 | `10111` (23) | `trap` | `trap id`              | Software interrupt / security exception |
 | `11111` (31) | `hlt`  | `hlt`                  | Halt processor execution |
 
