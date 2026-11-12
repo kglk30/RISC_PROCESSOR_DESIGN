@@ -88,7 +88,7 @@ Trap Format:
 | `00011` (3)  | `div`  | `div rd, rs1, rs2/imm` | Integer Division: $rd = rs1 / (rs2 \text{ or } imm)$ |
 | `00100` (4)  | `mod`  | `mod rd, rs1, rs2/imm` | Modulo Remainder: $rd = rs1 \pmod{rs2 \text{ or } imm}$ |
 | `00101` (5)  | `cmp`  | `cmp rs1, rs2/imm`     | Compare operands, update flags (Z, N, C, V) |
-| `00110` (6) | `and` | `and rd, rs1, rs2/imm` | Bitwise AND: `rd = rs1 & (rs2 or imm)` |
+| `00110` (6)  | `and`  | `and rd, rs1, rs2/imm` | Bitwise AND: $rd = rs1 \ \& \ (rs2 \text{ or } imm)$ |
 | `00111` (7)  | `or`   | `or rd, rs1, rs2/imm`  | Bitwise OR: $rd = rs1 \ \| \ (rs2 \text{ or } imm)$ |
 | `01000` (8)  | `not`  | `not rd, rs1`          | Bitwise NOT: $rd = \sim rs1$ |
 | `01001` (9)  | `mov`  | `mov rd, rs1/imm`      | Move register or immediate value into $rd$ |
@@ -106,8 +106,6 @@ Trap Format:
 | `10101` (21) | `blt`  | `blt label`            | Branch if Less ($N \neq V$) |
 | `10110` (22) | `bne`  | `bne label`            | Branch if Not Equal ($Z = 0$) |
 | `10111` (23) | `trap` | `trap id`              | Software interrupt / security exception |
-| `11000` (24) | `clz` | `clz rd, rs1` | Count leading zeros in a 32-bit value (Python implementation) |
-| `11001` (25) | `popcnt` | `popcnt rd, rs1` | Count set bits in a 32-bit value (Python implementation) |
 | `11111` (31) | `hlt`  | `hlt`                  | Halt processor execution |
 
 ---
@@ -262,19 +260,15 @@ The simulator includes an explicit Control Memory (ROM) and Micro-Program Counte
 
 ## Optimized ALU Subsystem
 
-The Python `ALU` class (`risc201/alu/alu.py`) provides configurable algorithmic models:
-* **Multiplication** (using the existing `mul` opcode `00010`):
-  * **Dadda Tree Multiplier**: The Python default; models partial-product reduction with a simulated latency of 6 cycles.
+The `ALU` class (`risc201/alu/alu.py`) provides configurable algorithmic models:
+* **Multiplication**:
   * **Fast Multiplier**: Native 1-cycle 32-bit two's complement product.
   * **Booth's Radix-2 Multiplier**: 32-cycle step-by-step arithmetic recoding ($Q_0, Q_{-1}$ comparison, addition/subtraction, arithmetic right shift).
   * **Shift-and-Add Multiplier**: 32-cycle unsigned shift-and-accumulate logic.
-* **Division** (using `div` opcode `00011` for the quotient and `mod` opcode `00100` for the remainder):
-  * **SRT Radix-2 Divider**: The Python default; uses a non-restoring-style radix-2 algorithm with a simulated latency of 32 cycles. SRT is an ALU algorithm, not a separate instruction or opcode.
+* **Division**:
   * **Fast Divider**: Native 1-cycle truncating division.
   * **Restoring Divider**: 32-cycle register shifting, trial subtraction, and restore steps.
   * **Zero Division Protection**: Generates `DivisionByZeroException`, captured in CSRs.
-* **Bit operations**: `clz rd, rs1` counts leading zeros (32 for zero); `popcnt rd, rs1` counts set bits using a parallel Hamming-weight algorithm. These instructions are implemented in the Python ISA, assembler, and ALU.
-* **Pipeline timing**: The Python 4-stage and 6-stage pipelines use the ALU latency to model stalls for multi-cycle `mul`, `div`, and `mod` operations.
 * **Condition Codes**: Sets `Z` (Zero), `N` (Negative), `C` (Carry/Borrow), `V` (Signed Overflow).
 
 ---
@@ -283,36 +277,37 @@ The Python `ALU` class (`risc201/alu/alu.py`) provides configurable algorithmic 
 
 The framework provides a modular set of tools:
 * `risc201/core/isa.py`: Instruction encodings, bit manipulation, register aliases.
-* `risc201/alu/alu.py`: Optimized ALU with configurable multiplier and divider algorithms.
-* `risc201/core/registers.py`: General Purpose Registers with hardwired `r0`, and CSR registers (`EPC`, `CAUSE`, `STATUS`, `BADVADDR`).
-* `risc201/core/memory.py`: Byte-addressable 64 KB memory with alignment and boundary protection.
-* `risc201/core/stack.py`: Stack preprocessor expanding `push`, `pop`, `enter`, `leave`, and leaf function optimization (`enter_leaf`, `leave_leaf`) with canary verification.
-* `risc201/ui/visualizer.py`: ASCII Stack Memory Visualizer & Pipeline State renderer.
-* `risc201/core/pmc.py`: Hardware Performance Monitoring Counters.
-* `risc201/pipelines/branch_predictor.py`: 2-bit Saturating Counter Predictor + BTB.
-* `risc201/pipelines/forwarding.py`: Forwarding Unit and Load-Use Hazard Detection Unit.
-* `risc201/pipelines/pipeline_4stage.py`: Cycle-accurate 4-stage pipeline processor.
-* `risc201/pipelines/pipeline_6stage.py`: Cycle-accurate 6-stage pipeline processor.
-* `risc201/control/microcode.py`: Microprogrammed CPU with Horizontal and Vertical control stores.
-* `risc201/toolchain/assembler.py`: Two-pass assembler emitting binary words and hex listings.
-* `risc201/toolchain/disassembler.py`: Machine code disassembler.
-* `risc201/ui/debugger.py`: Interactive CLI debugger REPL.
+* `risc201/alu/alu.py`: ALU with configurable multiplier and divider algorithms.
+* `risc201/core/registers.py`: General-purpose and CSR registers.
+* `risc201/core/memory.py`: Byte-addressable memory with alignment and boundary protection.
+* `risc201/core/stack.py`: Stack and function-frame macro expansion with canary verification.
+* `risc201/ui/visualizer.py`: Stack and pipeline-state rendering.
+* `risc201/core/pmc.py`: Performance monitoring counters.
+* `risc201/pipelines/branch_predictor.py`: 2-bit branch predictor and BTB.
+* `risc201/pipelines/forwarding.py`: Forwarding and load-use hazard detection.
+* `risc201/pipelines/pipeline_4stage.py`: 4-stage processor.
+* `risc201/pipelines/pipeline_6stage.py`: 6-stage processor.
+* `risc201/control/microcode.py`: Microprogrammed CPU.
+* `risc201/toolchain/assembler.py`: Two-pass assembler.
+* `risc201/toolchain/disassembler.py`: Machine-code disassembler.
+* `risc201/ui/debugger.py`: CLI debugger.
 * `cli.py`: Unified Python command line runner.
 * `benchmarks/benchmark.py`: Complete comparative benchmark suite in Python.
 * `tests/test_all.py`: Unit test runner in Python.
 
 ## Running the Python Project
 
-No compilation is required. From the repository root:
+No compilation is required. In PowerShell, open the extracted project folder and run:
 
 ```powershell
 py cli.py run programs/02_factorial.asm --arch 4stage
 py cli.py run programs/02_factorial.asm --arch 6stage
+py interactive.py
 py -m unittest discover -s tests
 py benchmarks/benchmark.py
 ```
 
-On systems where Python is invoked as `python3`, replace `py` with `python3`. The `Makefile` provides `make test` and `make benchmark` for environments with Make installed.
+`cli.py` prints final register values and hardware performance counters. `interactive.py` accepts assembly directly and prints a source listing, pipeline trace, timing diagram, all registers, an answer line, and a performance profile after `run`.
 
 ---
 
@@ -372,7 +367,7 @@ python3 cli.py debug programs/02_factorial.asm --arch 4stage
 
 ## Empirical Benchmarks & Experimental Results
 
-The following results were recorded by running `python3 benchmarks/benchmark.py`. Rerun them with the current configuration before comparing performance:
+The following empirical results were measured by running `python3 benchmarks/benchmark.py`:
 
 ### 1. 4-Stage vs. 6-Stage Pipeline Comparison
 | Benchmark Program | Architecture | Cycles | Instructions | Stalls | CPI | IPC |
@@ -433,7 +428,7 @@ The following results were recorded by running `python3 benchmarks/benchmark.py`
 ## Running Verification Tests
 Execute the comprehensive test runner to verify all subsystems:
 ```bash
-python3 tests/test_all.py
+py -m unittest discover -s tests
 ```
 Expected output:
 ```
